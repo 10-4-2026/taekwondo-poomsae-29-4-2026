@@ -8,9 +8,28 @@ import tempfile
 import os
 import time
 import multiprocessing
+import sys
+
+# Khởi tạo multiprocessing phù hợp với Ubuntu/Linux
+if multiprocessing.get_start_method(allow_none=True) != 'spawn':
+    try:
+        multiprocessing.set_start_method('spawn', force=True)
+    except RuntimeError:
+        pass
 
 # Cấu hình trang
 st.set_page_config(page_title="Phân tích Tư thế Cơ thể", layout="wide")
+
+# Tự động tải model nếu chưa có (Hữu ích cho Ubuntu/Cloud)
+if not os.path.exists("pose_landmarker.task"):
+    with st.spinner("Đang tải model MediaPipe..."):
+        try:
+            import urllib.request
+            model_url = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task"
+            urllib.request.urlretrieve(model_url, "pose_landmarker.task")
+            st.success("Đã tải xong model!")
+        except Exception as e:
+            st.error(f"Lỗi tải model: {e}")
 
 # CSS để tối ưu di động và thẩm mỹ
 st.markdown("""
@@ -109,8 +128,8 @@ if sample_file and practice_file:
                     while not queue_p.empty():
                         p2.progress(min(queue_p.get_nowait(), 1.0))
                     time.sleep(0.1) # Giảm tải cho CPU
-                except:
-                    pass
+                except Exception:
+                    continue
             
             proc_s.join()
             proc_p.join()

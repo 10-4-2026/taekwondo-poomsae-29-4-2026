@@ -14,8 +14,13 @@ def process_video(video_path, output_video_path, output_csv_path, progress_callb
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     
+    # Ưu tiên avc1 cho trình duyệt, fallback sang mp4v nếu lỗi (phổ biến trên Linux)
     fourcc = cv2.VideoWriter_fourcc(*'avc1')
     out = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
+    
+    if not out.isOpened():
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
     
     all_data = []
     frame_idx = 0
