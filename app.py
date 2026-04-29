@@ -7,29 +7,9 @@ from video_processor import process_video, compare_angles
 import tempfile
 import os
 import time
-import multiprocessing
-import sys
-
-# Khởi tạo multiprocessing phù hợp với Ubuntu/Linux
-if multiprocessing.get_start_method(allow_none=True) != 'spawn':
-    try:
-        multiprocessing.set_start_method('spawn', force=True)
-    except RuntimeError:
-        pass
 
 # Cấu hình trang
 st.set_page_config(page_title="Phân tích Tư thế Cơ thể", layout="wide")
-
-# Tự động tải model nếu chưa có (Hữu ích cho Ubuntu/Cloud)
-if not os.path.exists("pose_landmarker.task"):
-    with st.spinner("Đang tải model MediaPipe..."):
-        try:
-            import urllib.request
-            model_url = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task"
-            urllib.request.urlretrieve(model_url, "pose_landmarker.task")
-            st.success("Đã tải xong model!")
-        except Exception as e:
-            st.error(f"Lỗi tải model: {e}")
 
 # CSS để tối ưu di động và thẩm mỹ
 st.markdown("""
@@ -91,8 +71,8 @@ if sample_file and practice_file:
             with open(practice_path, "wb") as f:
                 f.write(practice_file.read())
                 
-            out_s_video = os.path.join(tmpdir, "res_sample.mp4")
-            out_p_video = os.path.join(tmpdir, "res_practice.mp4")
+            out_s_video = os.path.join(tmpdir, "res_sample.webm")
+            out_p_video = os.path.join(tmpdir, "res_practice.webm")
             out_s_csv = os.path.join(tmpdir, "res_sample.csv")
             out_p_csv = os.path.join(tmpdir, "res_practice.csv")
             
@@ -106,33 +86,18 @@ if sample_file and practice_file:
                 st.write("Tiến độ Thực hành")
                 p2 = st.progress(0.0)
 
-            # Xử lý SONG SONG bằng đa tiến trình
-            status_placeholder.info("⏳ Đang xử lý song song cả hai video (Đa tiến trình)...")
-            
-            queue_s = multiprocessing.Queue()
-            queue_p = multiprocessing.Queue()
-            
-            proc_s = multiprocessing.Process(target=process_video, args=(sample_path, out_s_video, out_s_csv, queue_s))
-            proc_p = multiprocessing.Process(target=process_video, args=(practice_path, out_p_video, out_p_csv, queue_p))
-            
-            proc_s.start()
-            proc_p.start()
-            
-            # Vòng lặp cập nhật UI song song
-            while proc_s.is_alive() or proc_p.is_alive() or not queue_s.empty() or not queue_p.empty():
-                try:
-                    # Kiểm tra tiến độ video mẫu
-                    while not queue_s.empty():
-                        p1.progress(min(queue_s.get_nowait(), 1.0))
-                    # Kiểm tra tiến độ video thực hành
-                    while not queue_p.empty():
-                        p2.progress(min(queue_p.get_nowait(), 1.0))
-                    time.sleep(0.1) # Giảm tải cho CPU
-                except Exception:
-                    continue
-            
-            proc_s.join()
-            proc_p.join()
+            try:
+                # Xử lý TUẦN TỰ từng video
+                status_placeholder.info("⏳ Đang xử lý lần lượt từng video...")
+                
+                # Xử lý video mẫu
+                process_video(sample_path, out_s_video, out_s_csv, p1.progress)
+                
+                # Xử lý video thực hành
+                process_video(practice_path, out_p_video, out_p_csv, p2.progress)
+            except Exception as e:
+                status_placeholder.error(f"❌ Lỗi trong quá trình xử lý video: {str(e)}")
+                st.stop()
 
             # Đọc lại kết quả
             df_s = pd.read_csv(out_s_csv)
