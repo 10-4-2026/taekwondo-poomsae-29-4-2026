@@ -1,7 +1,7 @@
 libsm6
 libxrender1
 libxext6
-ffmpeg=4.3
+ffmpeg=4.3.5
 libgles2
 libglib2.0-0
 libgl1
