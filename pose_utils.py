@@ -1,11 +1,12 @@
 import cv2
 import numpy as np
 import mediapipe as mp
+from mediapipe.solutions import pose as mp_pose
+from mediapipe.solutions import drawing_utils as mp_drawing
 
 class PoseEstimator:
     def __init__(self):
-        self.mp_pose = mp.solutions.pose
-        self.pose = self.mp_pose.Pose(
+        self.pose = mp_pose.Pose(
             static_image_mode=False,
             model_complexity=1,
             smooth_landmarks=True,
