@@ -97,7 +97,7 @@ if sample_file and practice_file:
             if not os.path.exists(out_s_csv) or not os.path.exists(out_p_csv):
                 status_placeholder.error("❌ Lỗi: Không thể tạo tệp dữ liệu kết quả. Vui lòng kiểm tra lại video đầu vào hoặc thử lại.")
                 # Dừng xử lý nếu thiếu tệp quan trọng
-                return
+                st.stop()
 
             # Đọc lại kết quả
             df_s = pd.read_csv(out_s_csv)
@@ -111,7 +111,7 @@ if sample_file and practice_file:
                     p_video_bytes = f.read()
             else:
                 status_placeholder.error("❌ Lỗi: Không thể tạo tệp video kết quả.")
-                return
+                st.stop()
 
             with open(out_s_csv, "rb") as f:
                 s_csv_bytes = f.read()
