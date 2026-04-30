@@ -1,34 +1,26 @@
 import cv2
 import numpy as np
 import mediapipe as mp
-from mediapipe.tasks import python
-from mediapipe.tasks.python import vision
 
 class PoseEstimator:
-    def __init__(self, model_path='pose_landmarker.task'):
-        base_options = python.BaseOptions(
-            model_asset_path=model_path,
-            delegate=python.BaseOptions.Delegate.CPU
+    def __init__(self):
+        self.mp_pose = mp.solutions.pose
+        self.pose = self.mp_pose.Pose(
+            static_image_mode=False,
+            model_complexity=1,
+            smooth_landmarks=True,
+            min_detection_confidence=0.5,
+            min_tracking_confidence=0.5
         )
-        options = vision.PoseLandmarkerOptions(
-            base_options=base_options,
-            running_mode=vision.RunningMode.VIDEO,
-            num_poses=1,
-            min_pose_detection_confidence=0.5,
-            min_pose_presence_confidence=0.5,
-            min_tracking_confidence=0.5,
-            output_segmentation_masks=False
-        )
-        self.landmarker = vision.PoseLandmarker.create_from_options(options)
 
     def close(self):
-        self.landmarker.close()
+        self.pose.close()
 
-    def get_landmarks(self, frame, timestamp_ms):
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame)
-        result = self.landmarker.detect_for_video(mp_image, timestamp_ms)
-        if result.pose_landmarks:
-            return result.pose_landmarks[0]
+    def get_landmarks(self, frame, timestamp_ms=None):
+        # Chuyển đổi sang RGB vì MediaPipe solutions yêu cầu RGB
+        results = self.pose.process(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        if results.pose_landmarks:
+            return results.pose_landmarks.landmark
         return None
 
     @staticmethod
@@ -55,7 +47,7 @@ class PoseEstimator:
         for idx, lm in enumerate(landmarks):
             points[idx] = (int(lm.x * w), int(lm.y * h))
 
-        # Tính toán các điểm trung tâm nếu cần
+        # Tính toán các điểm trung tâm
         mid_shoulder = (
             (points[11][0] + points[12][0]) // 2,
             (points[11][1] + points[12][1]) // 2
@@ -95,11 +87,11 @@ class PoseEstimator:
             calculated_angles[name] = self.calculate_angle(a, b, c)
 
         # Vẽ các kết nối
-        self.draw_skeleton(frame, points, mid_shoulder, mid_hip)
+        self.draw_skeleton(frame, points)
         
         return frame, calculated_angles
 
-    def draw_skeleton(self, frame, points, mid_shoulder, mid_hip):
+    def draw_skeleton(self, frame, points):
         # Các cặp điểm cần nối (theo MediaPipe)
         connections = [
             (11, 12), (11, 13), (13, 15), (12, 14), (14, 16), # Thân trên
@@ -111,6 +103,6 @@ class PoseEstimator:
         for p1, p2 in connections:
             cv2.line(frame, points[p1], points[p2], (0, 255, 0), 2)
             
-        for idx in connections:
-            for i in idx:
-                cv2.circle(frame, points[i], 5, (0, 0, 255), -1)
+        for idx in range(len(points)):
+            if idx in points:
+                cv2.circle(frame, points[idx], 5, (0, 0, 255), -1)

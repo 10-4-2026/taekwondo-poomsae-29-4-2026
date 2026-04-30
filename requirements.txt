@@ -1,9 +1,9 @@
 # System dependencies for Debian 11:
-# sudo apt-get update && sudo apt-get install -y libglib2.0-0 libsm6 libxrender1 libxext6
+# sudo apt-get update && sudo apt-get install -y libsm6 libxrender1 libxext6
 
 opencv-python-headless
 streamlit
-mediapipe>=0.10.0
+mediapipe
 pandas
 plotly
 scipy
