@@ -9,13 +9,27 @@ def process_video(video_path, output_video_path, output_csv_path, progress_callb
     estimator = PoseEstimator()
     cap = cv2.VideoCapture(video_path)
     
+    if not cap.isOpened():
+        print(f"Error: Could not open video source {video_path}")
+        # Create an empty CSV to avoid FileNotFoundError
+        pd.DataFrame(columns=["frame"]).to_csv(output_csv_path, index=False)
+        return pd.DataFrame()
+
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     fps = cap.get(cv2.CAP_PROP_FPS)
+    if fps == 0: fps = 30 # Fallback
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     
-    fourcc = cv2.VideoWriter_fourcc(*'avc1')
+    # Sử dụng mp4v thay vì avc1 để tương thích tốt hơn
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
+    
+    if not out.isOpened():
+        print(f"Error: Could not open VideoWriter with path {output_video_path}")
+        # Try a different codec as fallback
+        fourcc = cv2.VideoWriter_fourcc(*'XVID')
+        out = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
     
     all_data = []
     frame_idx = 0

@@ -7,7 +7,6 @@ from video_processor import process_video, compare_angles
 import tempfile
 import os
 import time
-import multiprocessing
 
 # Cấu hình trang
 st.set_page_config(page_title="Phân tích Tư thế Cơ thể", layout="wide")
@@ -87,43 +86,33 @@ if sample_file and practice_file:
                 st.write("Tiến độ Thực hành")
                 p2 = st.progress(0.0)
 
-            # Xử lý SONG SONG bằng đa tiến trình
-            status_placeholder.info("⏳ Đang xử lý song song cả hai video (Đa tiến trình)...")
+            # Xử lý TUẦN TỰ để đảm bảo tính ổn định (Tránh lỗi FileNotFoundError khi đa tiến trình bị treo)
+            status_placeholder.info("⏳ Đang xử lý video mẫu...")
+            process_video(sample_path, out_s_video, out_s_csv, p1.progress)
             
-            queue_s = multiprocessing.Queue()
-            queue_p = multiprocessing.Queue()
-            
-            proc_s = multiprocessing.Process(target=process_video, args=(sample_path, out_s_video, out_s_csv, queue_s))
-            proc_p = multiprocessing.Process(target=process_video, args=(practice_path, out_p_video, out_p_csv, queue_p))
-            
-            proc_s.start()
-            proc_p.start()
-            
-            # Vòng lặp cập nhật UI song song
-            while proc_s.is_alive() or proc_p.is_alive() or not queue_s.empty() or not queue_p.empty():
-                try:
-                    # Kiểm tra tiến độ video mẫu
-                    while not queue_s.empty():
-                        p1.progress(min(queue_s.get_nowait(), 1.0))
-                    # Kiểm tra tiến độ video thực hành
-                    while not queue_p.empty():
-                        p2.progress(min(queue_p.get_nowait(), 1.0))
-                    time.sleep(0.1) # Giảm tải cho CPU
-                except:
-                    pass
-            
-            proc_s.join()
-            proc_p.join()
+            status_placeholder.info("⏳ Đang xử lý video thực hành...")
+            process_video(practice_path, out_p_video, out_p_csv, p2.progress)
+
+            # Kiểm tra xem tệp có tồn tại không trước khi đọc
+            if not os.path.exists(out_s_csv) or not os.path.exists(out_p_csv):
+                status_placeholder.error("❌ Lỗi: Không thể tạo tệp dữ liệu kết quả. Vui lòng kiểm tra lại video đầu vào hoặc thử lại.")
+                # Dừng xử lý nếu thiếu tệp quan trọng
+                return
 
             # Đọc lại kết quả
             df_s = pd.read_csv(out_s_csv)
             df_p = pd.read_csv(out_p_csv)
             
             # Đọc dữ liệu vào bộ nhớ
-            with open(out_s_video, "rb") as f:
-                s_video_bytes = f.read()
-            with open(out_p_video, "rb") as f:
-                p_video_bytes = f.read()
+            if os.path.exists(out_s_video) and os.path.exists(out_p_video):
+                with open(out_s_video, "rb") as f:
+                    s_video_bytes = f.read()
+                with open(out_p_video, "rb") as f:
+                    p_video_bytes = f.read()
+            else:
+                status_placeholder.error("❌ Lỗi: Không thể tạo tệp video kết quả.")
+                return
+
             with open(out_s_csv, "rb") as f:
                 s_csv_bytes = f.read()
             with open(out_p_csv, "rb") as f:
