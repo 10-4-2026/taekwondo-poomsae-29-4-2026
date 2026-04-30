@@ -9,7 +9,6 @@ sudo apt-get update
 echo "Installing system dependencies..."
 sudo apt-get install -y \
     libglib2.0-0 \
-    libgl1-mesa-glx \
     libsm6 \
     libxrender1 \
     libxext6

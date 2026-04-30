@@ -6,7 +6,10 @@ from mediapipe.tasks.python import vision
 
 class PoseEstimator:
     def __init__(self, model_path='pose_landmarker.task'):
-        base_options = python.BaseOptions(model_asset_path=model_path)
+        base_options = python.BaseOptions(
+            model_asset_path=model_path,
+            delegate=python.BaseOptions.Delegate.CPU
+        )
         options = vision.PoseLandmarkerOptions(
             base_options=base_options,
             running_mode=vision.RunningMode.VIDEO,
