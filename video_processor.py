@@ -3,8 +3,6 @@ import pandas as pd
 import numpy as np
 from pose_utils import PoseEstimator
 import os
-# Ép buộc OpenCV/FFMPEG sử dụng encoder phần mềm libx264 nếu có thể
-os.environ["OPENCV_FFMPEG_WRITER_OPTIONS"] = "encoder|libx264"
 from scipy.spatial import distance
 
 def process_video(video_path, output_video_path, output_csv_path, progress_callback=None):
@@ -16,21 +14,8 @@ def process_video(video_path, output_video_path, output_csv_path, progress_callb
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     
-    # Chọn codec dựa trên phần mở rộng file
-    if output_video_path.endswith('.webm'):
-        fourcc = cv2.VideoWriter_fourcc(*'VP80') # VP8 cho WebM
-    else:
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v') # mp4v cho MP4
-        
+    fourcc = cv2.VideoWriter_fourcc(*'avc1')
     out = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
-    
-    # Kiểm tra nếu codec được chọn không hoạt động
-    if not out.isOpened():
-        # Fallback sang mp4v nếu VP8 thất bại (dù khó xem trên web nhưng ít lỗi nhất)
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        out = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
-        if not out.isOpened():
-            raise RuntimeError(f"Không thể khởi tạo VideoWriter tại {output_video_path}")
     
     all_data = []
     frame_idx = 0
@@ -60,7 +45,10 @@ def process_video(video_path, output_video_path, output_csv_path, progress_callb
         
         if progress_callback:
             progress = frame_idx / total_frames
-            progress_callback(progress)
+            if hasattr(progress_callback, 'put'): # Nếu là multiprocessing.Queue
+                progress_callback.put(progress)
+            else: # Nếu là hàm thông thường
+                progress_callback(progress)
         
     cap.release()
     out.release()
